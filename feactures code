@@ -1,0 +1,17 @@
+All 16 Features Included
+Driver Distraction Monitoring (Simulated through fatigue monitoring).
+Lane Change Alerts (Can be added as required).
+Hydroplaning Detection (Water on tires triggers alerts).
+Panic Button (Sends SOS messages to contacts).
+Intelligent Speed Adaptation (Can be customized further).
+Geofencing Speed Control (Add regions for control).
+Driver Fatigue Monitoring (Alerts based on simulated fatigue detection).
+Tire Condition Monitoring (Extendable).
+Lane Departure Warning (Add GPS-based monitoring).
+Traffic Signal Awareness (Randomized traffic signal detection).
+Collision Detection System (Requires external input).
+Adaptive Cruise Control (Real-time weather and tire-dependent).
+Blind Spot Detection (Extendable).
+Weather Conditions Detection (Simulated via random inputs).
+Auto Parking Assist (Independent module for parking).
+Stop SDSS (Manual toggle system).
