@@ -1,0 +1,190 @@
+import time
+import pyttsx3
+import speech_recognition as sr
+import random
+
+# Initialize the text-to-speech engine
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)  # Speed of speech
+voices = engine.getProperty('voices')
+for voice in voices:
+    if 'female' in voice.name.lower():
+        engine.setProperty('voice', voice.id)
+        break
+
+# Constants
+SAFE_SPEED = 60  # Safe speed in km/h
+DANGER_SYMBOL = "⚠️"
+BRAKE_WARNING = " Avoid applying brakes suddenly."
+MAX_ALERTS = 2  # Maximum number of alerts for a specific situation
+PARKING_LIGHT_ON = False  # Status of the parking lights
+STOP_ALERTS = False  # Flag to stop all alerts
+TIRE_TREAD_DEPTH = 5  # mm
+EMERGENCY_CONTACTS = ["123-456-7890", "987-654-3210", "112"]  # Default contacts
+DRIVE_TIME_LIMIT = 3 * 60 * 60  # 3 hours in seconds (Simulating continuous driving time)
+
+# Functions for alerts and dashboard updates
+def voice_alert(message):
+    """Provide audio alerts to the driver."""
+    engine.say(message)
+    engine.runAndWait()
+
+def simulate_sensor_readings():
+    """Simulate sensor readings for speed and water depth."""
+    current_speed = float(input("Enter the current speed of the vehicle (km/h): "))
+    current_water_depth = float(input("Enter the current water depth on the road (mm): "))
+    return current_speed, current_water_depth
+
+def control_parking_lights(water_depth):
+    """Control parking lights based on water depth."""
+    global PARKING_LIGHT_ON
+    if water_depth > 0 and not PARKING_LIGHT_ON:
+        print("Parking lights ON")
+        PARKING_LIGHT_ON = True
+    elif water_depth == 0 and PARKING_LIGHT_ON:
+        print("Parking lights OFF")
+        PARKING_LIGHT_ON = False
+
+def calculate_tire_contact(water_depth):
+    """Calculate the tire contact percentage based on water depth."""
+    if water_depth < 5:
+        return 100  # Full contact
+    elif 5 <= water_depth < 15:
+        return 75  # Reduced contact
+    else:
+        return 40  # Minimal contact
+
+def hydroplaning_alert(speed, water_depth):
+    """Generate alerts based on hydroplaning risk."""
+    if water_depth == 0:
+        return "✅ Road is clear. Have a safe journey."
+    
+    tire_contact = calculate_tire_contact(water_depth)
+    
+    if tire_contact == 100:
+        return "✅ No significant water detected. Drive safely."
+    elif 50 <= tire_contact < 100:
+        recommended_speed = max(SAFE_SPEED, speed - 10)
+        return f"{DANGER_SYMBOL} Moderate risk! Reduce speed to {recommended_speed:.2f} km/h."
+    else:
+        recommended_speed = max(20, speed * 0.7)  # Reduce speed to 70% of current speed
+        return f"{DANGER_SYMBOL} Danger! Hydroplaning risk detected. Slow down to {recommended_speed:.2f} km/h immediately.{BRAKE_WARNING}"
+
+def adjust_speed(speed, recommended_speed):
+    """Adjust the vehicle's speed."""
+    print(f"Adjusting speed from {speed:.2f} km/h to {recommended_speed:.2f} km/h.")
+    voice_alert(f"Adjusting speed to {recommended_speed:.2f} kilometers per hour.")
+    return recommended_speed
+
+def stop_alerts():
+    """Stop all alerts when user says 'All stop'."""
+    global STOP_ALERTS
+    STOP_ALERTS = True
+    voice_alert("All alerts stopped. Driving safely.")
+
+def listen_for_commands():
+    """Listen for the 'All stop' voice command."""
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source)
+        print("Listening for 'All stop' command...")
+        audio = recognizer.listen(source)
+
+    try:
+        command = recognizer.recognize_google(audio).lower()
+        print(f"Command received: {command}")
+        if "all stop" in command:
+            stop_alerts()
+    except sr.UnknownValueError:
+        print("Could not understand the audio. Please try again.")
+    except sr.RequestError:
+        print("Could not request results; check your network connection.")
+
+def lane_departure_warning():
+    """Simulate lane departure warning."""
+    if random.choice([True, False]):
+        voice_alert("Warning: Lane departure detected. Please stay in your lane.")
+
+def driver_fatigue_monitoring(time_driven):
+    """Monitor and alert for driver fatigue."""
+    if time_driven >= DRIVE_TIME_LIMIT:  # If the driver has been driving for more than 3 hours
+        voice_alert("You have been driving for more than 3 hours. Please take a break. Proceed when you feel refreshed. Have a safe ride!")
+
+def blind_spot_detection():
+    """Alert for vehicles in blind spots."""
+    if random.choice([True, False]):
+        voice_alert("Warning: Vehicle detected in your blind spot.")
+
+def automatic_speed_control(current_speed):
+    """Adjust speed based on real-time conditions like weather or traffic."""
+    if current_speed > 100:
+        reduced_speed = current_speed - 20
+        voice_alert(f"Speeding detected. Reducing speed to {reduced_speed} km/h.")
+        return reduced_speed
+    return current_speed
+
+def geofencing_speed_control(current_location):
+    """Simulate speed control for restricted areas like school zones."""
+    restricted_areas = ["school zone", "construction zone"]
+    if current_location in restricted_areas:
+        voice_alert(f"Entering {current_location}. Reducing speed to 30 km/h.")
+        return 30
+    return 60
+
+def main():
+    alert_count = 0
+    global PARKING_LIGHT_ON, STOP_ALERTS
+    time_driven = 0  # Track driving time in seconds
+
+    while True:
+        # Listen for the 'All stop' voice command in background
+        if not STOP_ALERTS:
+            listen_for_commands()
+
+        try:
+            current_speed, current_water_depth = simulate_sensor_readings()
+            water_detected = current_water_depth > 0
+
+            # Control parking lights based on water detection
+            control_parking_lights(current_water_depth)
+
+            # Generate and handle hydroplaning alert
+            alert_message = hydroplaning_alert(current_speed, current_water_depth)
+
+            # Print and speak the alert if alerts are not stopped
+            if alert_count < MAX_ALERTS and water_detected and not STOP_ALERTS:
+                print(alert_message)
+                voice_alert(alert_message)
+                alert_count += 1
+
+                # Adjust speed if necessary based on the alert message
+                if "Reduce speed to" in alert_message or "Slow down to" in alert_message:
+                    recommended_speed = float(alert_message.split("to ")[1].split(" km/h")[0])
+                    current_speed = adjust_speed(current_speed, recommended_speed)
+
+            elif not water_detected and not STOP_ALERTS:
+                alert_count = 0
+                print(alert_message)
+                voice_alert(alert_message)
+
+            # Additional safety features (simulated)
+            lane_departure_warning()
+            driver_fatigue_monitoring(time_driven)  # Check for driver fatigue
+            blind_spot_detection()
+            current_location = random.choice(["school zone", "city", "construction zone"])
+            geofencing_speed_control(current_location)
+            current_speed = automatic_speed_control(current_speed)
+
+            # Simulate the time driven by increasing it gradually (in seconds)
+            time_driven += 5  # Add 5 seconds for each iteration (simulate time passing)
+
+            # Exit the loop after a few seconds (simulate real-time checks)
+            time.sleep(5)  # Wait for 5 seconds before checking again
+
+        except ValueError:
+            print("Invalid input. Please enter numeric values for speed and water depth.")
+
+if __name__ == "__main__":
+    main()
